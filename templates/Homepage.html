@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/Homepage.css') }}">
+    <style>
+        .topic-details { display: none; }
+        .form-display { display: none; }
+    </style>
+</head>
+<body> 
+    <header>
+        <div class="Post-It">
+            <h1>Post-It</h1>
+        </div>
+
+        <nav>
+            <ul>
+                {% if logged_in %}
+                <li><a href="{{ url_for('logout') }}" id="logout-link">Logout</a></li>
+                {% else %}
+                    <li>
+                        <a href="#" class="click-popup" id="login-popup">Login</a>
+                        <div id="login-popup-content" class="popup-content">
+                            <div class="container-box">
+                                <h2>User Login</h2>
+                                <form id="login-form" method="post" action="{{ url_for('login') }}">
+                                    <div class="form-group">
+                                        <label for="username">Username:</label>
+                                        <input type="text" id="username" name="username" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="password">Password:</label>
+                                        <input type="password" id="password" name="password" required>
+                                    </div>
+                                    <button type="submit">Login</button>
+                                </form>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <a href="#" class="click-popup" id="signup-popup">SignUp</a>
+                        <div id="signup-popup-content" class="popup-content">
+                            <div class="signup-container">
+                                <h2>Sign Up</h2>
+                                <form id="signup-form" method="post" action="{{ url_for('signup') }}">
+                                    <input type="text" name="username" placeholder="Username" required>
+                                    <input type="text" name="fullname" placeholder="Full Name" required>
+                                    <input type="email" name="email" placeholder="Email" required>
+                                    <input type="password" name="password" id="signup-password" placeholder="Password" required>
+                                    <input type="password" name="password_confirm" id="password_confirm" placeholder="Confirm Password" required>
+                                    <input type="submit" value="Sign Up">
+                                    <div id="signup-error-message" class="error-message" style="display: none;"></div>
+                                </form>
+                            </div>
+                        </div>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div class="line"></div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('create_page') }}">Create</a></li>
+            </ul>
+        </nav>
+
+        {% if logged_in %}
+<div id="topic-container">
+    {% for topic, claims in topics %}
+    <div class="topic">
+        <h3 onclick="toggleTopicDetails('{{ topic.topicID }}')">{{ topic.topicName }}</h3>
+        <div id="details-{{ topic.topicID }}" class="topic-details" style="display: none;">
+            <p>Created on: {{ topic.formattedCreationTime }}</p>
+            <p>Topic created by: {{ topic.postingUser }}</p>
+            <button onclick="showForm('{{ topic.topicID }}')">Add Claim</button>
+            <div id="form-{{ topic.topicID }}" class="form-display">
+                <input type="text" id="claim-text-{{ topic.topicID }}" placeholder="Enter your claim">
+                <select name="claim-options" id="claim-options-{{ topic.topicID }}">
+                    <option value="1">Opposed</option>
+                    <option value="2">Equivalent</option>
+                </select>
+                <button onclick="submitClaim('{{ topic.topicID }}')">Submit</button>
+            </div>
+            <div id="claims-{{ topic.topicID }}">
+                {% for claim in claims %}
+                <div class="claim" id="claim-{{ claim.claimID }}">
+                    <h4 onclick="toggleReplyForm('{{ claim.claimID }}')">{{ claim.text }}</h4>
+                    <p>Claim ID: {{ claim.claimID }} - Claim made on: {{ claim.formattedCreationTime }} by {{ claim.postingUser }}</p>
+                    <div class="claim-to-claim-form">
+                        <select id="claim-rel-type-{{ claim.claimID }}">
+                            <option value="1">Supporting Argument</option>
+                            <option value="2">Counterargument</option>
+                            <option value="3">Related Evidence</option>
+                        </select>
+                        <input type="text" placeholder="Link to claim ID" id="linked-claim-id-{{ claim.claimID }}">
+                        <button onclick="submitClaimToClaim('{{ claim.claimID }}')">Submit Relationship</button>
+                    </div>
+                    <div id="replies-{{ claim.claimID }}" class="replies-container">
+                        {% for reply in claim.replies %}
+                        <div class="reply" id="reply-{{ reply.replyTextID }}">
+                            <div class="reply-text-wrapper" onclick="toggleReplyForm('{{ reply.replyTextID }}')">
+                                <strong>{{ reply.userName }}</strong>: {{ reply.text }}<small>{{ reply.formattedCreationTime }}</small>
+                            </div>
+                            <!-- Nested replies container for each reply -->
+                            <div id="replies-{{ reply.replyTextID }}" class="replies-container">
+                                {% for nested_reply in reply.nested_replies %}
+                                <div class="reply" id="reply-{{ nested_reply.replyTextID }}">
+                                    <div class="reply-text-wrapper">
+                                        <strong>{{ nested_reply.userName }}</strong>: {{ nested_reply.text }}<small>{{ nested_reply.formattedCreationTime }}</small>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div id="reply-form-{{ reply.replyTextID }}" class="reply-form" style="display:none;">
+                                <input type="text" placeholder="Enter your reply" id="reply-text-{{ reply.replyTextID }}">
+                                <button onclick="submitReplyToReply('{{ reply.replyTextID }}'); stopPropagation(event)">Submit Reply</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div id="reply-form-{{ claim.claimID }}" class="reply-form" style="display:none;">
+                        <input type="text" placeholder="Enter your reply" id="reply-text-{{ claim.claimID }}">
+                        <select name="claim-options" id="claim-options-{{ claim.claimID }}">
+                            <option value="1">Clarification</option>
+                            <option value="2">Supporting Argument</option>
+                            <option value="3">Counterargument</option>
+                        </select>
+                        <button onclick="submitReply('{{ claim.claimID }}'); stopPropagation(event)">Submit Reply</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="welcome-message">Welcome to Post-It! Please log in to view topics or create topics.</p>
+{% endif %}
+</main>
+
+        
+        
+
+    <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/password.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/topic.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+</body>
+</html>

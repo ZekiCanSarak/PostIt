@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create page</title>
+    <link rel="stylesheet" href="static/css/create.css">
+</head>
+<body> 
+    
+    <header>
+        <div class="Post-It">
+        <h1>Post-It</h1>
+    </div>
+        <nav>
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+            </ul>
+        </nav>
+
+    </header>
+
+    <main>
+        <div class="line"></div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+               
+            </ul>
+        </nav>
+
+        <div class="create-container">
+            <h2>Create Topic</h2>
+            <form action="/create-topic" method="post">
+                <div class="form-group">
+                    <label for="topic">Topic:</label>
+                    <input type="text" id="topic" name="topic" required>
+                </div>
+                <input type="submit" value="Create Topic">
+            </form>
+        </div>
+        
+      
+        
+    </main>
+
+    <script>
+     document.addEventListener('DOMContentLoaded', function() {
+    var createTopicForm = document.querySelector('form'); 
+    var errorMessage = document.getElementById('error-message');
+
+    createTopicForm.addEventListener('submit', function(event) {
+        event.preventDefault(); 
+
+        var formData = new FormData(createTopicForm);
+
+        fetch('/create-topic', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Topic created successfully!');
+                
+            } else {
+                errorMessage.textContent = data.message;
+                errorMessage.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            errorMessage.textContent = 'An error occurred while creating the topic.';
+            errorMessage.style.display = 'block';
+        });
+    });
+});
+
+    </script>
+
+</body>
+</html>
