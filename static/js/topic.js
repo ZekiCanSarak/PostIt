@@ -86,8 +86,6 @@ function submitClaim(topicId) {
     .catch(error => console.error('Error:', error));
 }
 
-
-
 function displayReplyForm(claimId) {
     var formId = 'reply-form-' + claimId;
     var replyForm = document.getElementById(formId);
@@ -177,18 +175,10 @@ function submitReplyToReply(replyId) {
     });
 }
 
-
-
-
 function toggleReplyForm(replyId) {
     const replyForm = document.getElementById(`reply-form-${replyId}`);
     replyForm.style.display = (replyForm.style.display === 'none' || !replyForm.style.display) ? 'block' : 'none';
 }
-
-
-
-
-
 
 function toggleReplyForm(claimId) {
     var formId = 'reply-form-' + claimId;
@@ -200,7 +190,6 @@ function toggleReplyForm(claimId) {
         replyForm.style.display = 'block';
     }
 }
-
 
 function stopPropagation(event) {
     event.stopPropagation();
@@ -242,7 +231,6 @@ function submitReply(claimId) {
     });
 }
 
-
 function stopPropagation(event) {
     event.stopPropagation();
 }
@@ -263,11 +251,9 @@ function loadReplies(claimId) {
         .catch(error => console.error('Failed to load replies:', error));
 }
 
-
-
 document.addEventListener('DOMContentLoaded', function() {
     const claimIds = [...document.querySelectorAll('.claim')].map(claim => claim.id.replace('claim-', ''));
-    claimIds.forEach(claimId => loadRepliesForClaim(claimId));
+    claimIds.forEach(claimId => loadReplies(claimId));
 });
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -310,42 +296,156 @@ function submitClaimToClaim(claimId) {
     });
 }
 
-
-
+// Load claim relation types
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('/get-claim-rel-types')
-        .then(response => response.json())
-        .then(types => {
-            document.querySelectorAll('[id^="claim-rel-type-"]').forEach(select => {
-                types.forEach(type => {
-                    let option = document.createElement('option');
-                    option.value = type.claimRelTypeID;
-                    option.textContent = type.claimRelType;
-                    select.appendChild(option);
+    if (document.querySelector('[id^="claim-rel-type-"]')) {
+        fetch('/get-claim-rel-types')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(types => {
+                document.querySelectorAll('[id^="claim-rel-type-"]').forEach(select => {
+                    select.innerHTML = '<option value="">Select relation type</option>';
+                    types.forEach(type => {
+                        let option = document.createElement('option');
+                        option.value = type.claimRelTypeID;
+                        option.textContent = type.claimRelType;
+                        select.appendChild(option);
+                    });
                 });
-            });
-        });
+            })
+            .catch(error => console.error('Error loading claim relation types:', error));
+    }
 });
 
+// Load reply relation types
 document.addEventListener('DOMContentLoaded', function() {
-    
-    document.querySelectorAll('.reply').forEach(reply => {
-        const replyId = reply.getAttribute('id').split('-')[1]; 
-        loadNestedReplies(replyId);
-    });
+    if (document.querySelector('[id^="reply-rel-type-"]')) {
+        fetch('/get-reply-rel-types')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(types => {
+                document.querySelectorAll('[id^="reply-rel-type-"]').forEach(select => {
+                    select.innerHTML = '<option value="">Select relation type</option>';
+                    types.forEach(type => {
+                        let option = document.createElement('option');
+                        option.value = type.replyRelTypeID;
+                        option.textContent = type.replyRelType;
+                        select.appendChild(option);
+                    });
+                });
+            })
+            .catch(error => console.error('Error loading reply relation types:', error));
+    }
 });
 
+// Load reply-to-reply relation types
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('[id^="reply-to-reply-rel-type-"]')) {
+        fetch('/get-reply-to-reply-rel-types')
+            .then(response => {
+                if (!response.ok) throw new Error('Network response was not ok');
+                return response.json();
+            })
+            .then(types => {
+                document.querySelectorAll('[id^="reply-to-reply-rel-type-"]').forEach(select => {
+                    select.innerHTML = '<option value="">Select relation type</option>';
+                    types.forEach(type => {
+                        let option = document.createElement('option');
+                        option.value = type.replyToReplyRelTypeID;
+                        option.textContent = type.replyToReplyRelType;
+                        select.appendChild(option);
+                    });
+                });
+            })
+            .catch(error => console.error('Error loading reply-to-reply relation types:', error));
+    }
+});
+
+// Load nested replies with proper error handling
 function loadNestedReplies(parentReplyId) {
+    const repliesContainer = document.getElementById(`replies-${parentReplyId}`);
+    if (!repliesContainer) return;
+
     fetch(`/get-nested-replies/${parentReplyId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
         .then(nestedReplies => {
-            const repliesContainer = document.getElementById(`replies-${parentReplyId}`);
-            nestedReplies.forEach(reply => {
-                const replyElement = document.createElement('div');
-                replyElement.className = 'nested-reply';
-                replyElement.innerHTML = `<strong>${reply.userName}</strong>: ${reply.text} <small>${reply.formattedCreationTime}</small>`;
-                repliesContainer.appendChild(replyElement);
-            });
+            if (Array.isArray(nestedReplies)) {
+                nestedReplies.forEach(reply => {
+                    const replyElement = document.createElement('div');
+                    replyElement.className = 'nested-reply';
+                    replyElement.innerHTML = `
+                        <div class="reply-header">
+                            <strong>${reply.userName}</strong>
+                            <small>${reply.formattedCreationTime}</small>
+                        </div>
+                        <div class="reply-content">${reply.text}</div>
+                        <div class="reply-footer">
+                            <small class="reply-type">${reply.replyType || ''}</small>
+                        </div>
+                    `;
+                    repliesContainer.appendChild(replyElement);
+                });
+            }
         })
         .catch(error => console.error('Error loading nested replies:', error));
 }
+
+// Load initial replies
+document.addEventListener('DOMContentLoaded', function() {
+    const replies = document.querySelectorAll('.reply');
+    if (replies.length > 0) {
+        replies.forEach(reply => {
+            const replyId = reply.getAttribute('id');
+            if (replyId) {
+                const id = replyId.split('-')[1];
+                if (id) {
+                    loadNestedReplies(id);
+                }
+            }
+        });
+    }
+});
+
+function toggleLike(targetType, targetId, button) {
+    // Create and submit a form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/like';
+
+    const typeInput = document.createElement('input');
+    typeInput.type = 'hidden';
+    typeInput.name = 'targetType';
+    typeInput.value = targetType;
+    form.appendChild(typeInput);
+
+    const idInput = document.createElement('input');
+    idInput.type = 'hidden';
+    idInput.name = 'targetId';
+    idInput.value = targetId;
+    form.appendChild(idInput);
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Handle comment form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const commentForm = document.getElementById('comment-form');
+    if (commentForm) {
+        commentForm.addEventListener('submit', function(e) {
+            // Let the form submit normally - no need to prevent default
+            const content = document.querySelector('textarea[name="content"]').value;
+            if (!content.trim()) {
+                e.preventDefault();
+                alert('Please enter a comment');
+            }
+        });
+    }
+});

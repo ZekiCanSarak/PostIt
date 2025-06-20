@@ -7,20 +7,18 @@ function submitForm(event, formId, errorMessageId, successCallback) {
     
     fetch(event.target.action, {
         method: 'POST',
-        body: formData
+        body: formData,
+        redirect: 'follow'
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
         }
         return response.json();
     }) 
     .then(data => {
-        
-        if (data.success) {
-            successCallback(data);
-        } else {
-            
+        if (data && !data.success) {
             document.getElementById(errorMessageId).textContent = data.message;
             document.getElementById(errorMessageId).style.display = 'block';
         }
@@ -41,14 +39,18 @@ document.addEventListener("DOMContentLoaded", function() {
     var loginForm = document.getElementById('login-form');
     if (loginForm) {
         loginForm.addEventListener('submit', function(event) {
-            
+            submitForm(event, 'login-form', 'login-error-message', function() {
+                window.location.href = '/';
+            });
         });
     }
 
     var signupForm = document.getElementById('signup-form');
     if (signupForm) {
         signupForm.addEventListener('submit', function(event) {
-            
+            submitForm(event, 'signup-form', 'signup-error-message', function() {
+                window.location.href = '/';
+            });
         });
     }
 });

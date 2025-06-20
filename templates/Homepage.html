@@ -3,157 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Homepage</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/Homepage.css') }}">
-    <style>
-        .topic-details { display: none; }
-        .form-display { display: none; }
-    </style>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <title>Post-It - Semantic Debate Forum</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body> 
+<body>
     <header>
-        <div class="Post-It">
-            <h1>Post-It</h1>
+        <div class="header-content">
+            <a href="{{ url_for('home') }}" class="logo">Post-It</a>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    {% if logged_in %}
+                        <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                        <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
+                    {% else %}
+                        <li><a href="#" id="login-popup" class="btn btn-primary">Login</a></li>
+                        <li><a href="#" id="signup-popup" class="btn btn-secondary">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
-
-        <nav>
-            <ul>
-                {% if logged_in %}
-                <li><a href="{{ url_for('logout') }}" id="logout-link">Logout</a></li>
-                {% else %}
-                    <li>
-                        <a href="#" class="click-popup" id="login-popup">Login</a>
-                        <div id="login-popup-content" class="popup-content">
-                            <div class="container-box">
-                                <h2>User Login</h2>
-                                <form id="login-form" method="post" action="{{ url_for('login') }}">
-                                    <div class="form-group">
-                                        <label for="username">Username:</label>
-                                        <input type="text" id="username" name="username" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="password">Password:</label>
-                                        <input type="password" id="password" name="password" required>
-                                    </div>
-                                    <button type="submit">Login</button>
-                                </form>
-                            </div>
-                        </div>
-                    </li>
-                    <li>
-                        <a href="#" class="click-popup" id="signup-popup">SignUp</a>
-                        <div id="signup-popup-content" class="popup-content">
-                            <div class="signup-container">
-                                <h2>Sign Up</h2>
-                                <form id="signup-form" method="post" action="{{ url_for('signup') }}">
-                                    <input type="text" name="username" placeholder="Username" required>
-                                    <input type="text" name="fullname" placeholder="Full Name" required>
-                                    <input type="email" name="email" placeholder="Email" required>
-                                    <input type="password" name="password" id="signup-password" placeholder="Password" required>
-                                    <input type="password" name="password_confirm" id="password_confirm" placeholder="Confirm Password" required>
-                                    <input type="submit" value="Sign Up">
-                                    <div id="signup-error-message" class="error-message" style="display: none;"></div>
-                                </form>
-                            </div>
-                        </div>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
     </header>
 
-    <main>
-        <div class="line"></div>
-
-        <nav class="sidebar-nav">
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('create_page') }}">Create</a></li>
-            </ul>
-        </nav>
-
-        {% if logged_in %}
-<div id="topic-container">
-    {% for topic, claims in topics %}
-    <div class="topic">
-        <h3 onclick="toggleTopicDetails('{{ topic.topicID }}')">{{ topic.topicName }}</h3>
-        <div id="details-{{ topic.topicID }}" class="topic-details" style="display: none;">
-            <p>Created on: {{ topic.formattedCreationTime }}</p>
-            <p>Topic created by: {{ topic.postingUser }}</p>
-            <button onclick="showForm('{{ topic.topicID }}')">Add Claim</button>
-            <div id="form-{{ topic.topicID }}" class="form-display">
-                <input type="text" id="claim-text-{{ topic.topicID }}" placeholder="Enter your claim">
-                <select name="claim-options" id="claim-options-{{ topic.topicID }}">
-                    <option value="1">Opposed</option>
-                    <option value="2">Equivalent</option>
-                </select>
-                <button onclick="submitClaim('{{ topic.topicID }}')">Submit</button>
-            </div>
-            <div id="claims-{{ topic.topicID }}">
-                {% for claim in claims %}
-                <div class="claim" id="claim-{{ claim.claimID }}">
-                    <h4 onclick="toggleReplyForm('{{ claim.claimID }}')">{{ claim.text }}</h4>
-                    <p>Claim ID: {{ claim.claimID }} - Claim made on: {{ claim.formattedCreationTime }} by {{ claim.postingUser }}</p>
-                    <div class="claim-to-claim-form">
-                        <select id="claim-rel-type-{{ claim.claimID }}">
-                            <option value="1">Supporting Argument</option>
-                            <option value="2">Counterargument</option>
-                            <option value="3">Related Evidence</option>
-                        </select>
-                        <input type="text" placeholder="Link to claim ID" id="linked-claim-id-{{ claim.claimID }}">
-                        <button onclick="submitClaimToClaim('{{ claim.claimID }}')">Submit Relationship</button>
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
                     </div>
-                    <div id="replies-{{ claim.claimID }}" class="replies-container">
-                        {% for reply in claim.replies %}
-                        <div class="reply" id="reply-{{ reply.replyTextID }}">
-                            <div class="reply-text-wrapper" onclick="toggleReplyForm('{{ reply.replyTextID }}')">
-                                <strong>{{ reply.userName }}</strong>: {{ reply.text }}<small>{{ reply.formattedCreationTime }}</small>
-                            </div>
-                            <!-- Nested replies container for each reply -->
-                            <div id="replies-{{ reply.replyTextID }}" class="replies-container">
-                                {% for nested_reply in reply.nested_replies %}
-                                <div class="reply" id="reply-{{ nested_reply.replyTextID }}">
-                                    <div class="reply-text-wrapper">
-                                        <strong>{{ nested_reply.userName }}</strong>: {{ nested_reply.text }}<small>{{ nested_reply.formattedCreationTime }}</small>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div id="reply-form-{{ reply.replyTextID }}" class="reply-form" style="display:none;">
-                                <input type="text" placeholder="Enter your reply" id="reply-text-{{ reply.replyTextID }}">
-                                <button onclick="submitReplyToReply('{{ reply.replyTextID }}'); stopPropagation(event)">Submit Reply</button>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% if not logged_in %}
+            <div class="topic-card mt-4">
+                <div class="topic-header">
+                    <h2 class="topic-title">Welcome to Post-It!</h2>
+                    <p class="topic-content mt-2">Please log in to create topics, comment, or like posts.</p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="topic-list mt-4">
+            {% for topic in topics %}
+                <a href="{{ url_for('view_topic', topic_id=topic.topicID) }}" class="topic-card-link">
+                    <div class="topic-card">
+                        <div class="topic-header">
+                            <h2 class="topic-title">{{ topic.title }}</h2>
+                            <div class="topic-meta">
+                                <span>Posted by {{ topic.userName }}</span>
+                                <span>{{ topic.creationTime }}</span>
                             </div>
                         </div>
-                        {% endfor %}
+                        {% if topic.content %}
+                            <div class="topic-content mt-2">
+                                {{ topic.content[:200] }}{% if topic.content|length > 200 %}...{% endif %}
+                            </div>
+                        {% endif %}
+                        <div class="topic-stats mt-2">
+                            <div class="topic-stat">
+                                <span>{{ topic.commentCount }} comments</span>
+                            </div>
+                            <div class="topic-stat">
+                                <button class="like-button {% if topic.userLiked %}liked{% endif %}" 
+                                        data-topic-id="{{ topic.topicID }}"
+                                        onclick="event.stopPropagation(); toggleLike('topic', this.dataset.topicId, this)"
+                                        {% if not logged_in %}disabled{% endif %}>
+                                    <span class="like-icon">♥</span>
+                                    <span class="like-count">{{ topic.likeCount }}</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div id="reply-form-{{ claim.claimID }}" class="reply-form" style="display:none;">
-                        <input type="text" placeholder="Enter your reply" id="reply-text-{{ claim.claimID }}">
-                        <select name="claim-options" id="claim-options-{{ claim.claimID }}">
-                            <option value="1">Clarification</option>
-                            <option value="2">Supporting Argument</option>
-                            <option value="3">Counterargument</option>
-                        </select>
-                        <button onclick="submitReply('{{ claim.claimID }}'); stopPropagation(event)">Submit Reply</button>
-                    </div>
-                </div>
-                {% endfor %}
+                </a>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Login Popup -->
+    <div id="login-popup-content" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Login</h2>
+                <button class="btn btn-secondary" onclick="closePopup('login-popup-content')">×</button>
             </div>
+            <form id="login-form" method="post" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" name="username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-input" required>
+                </div>
+                <div id="login-error-message" class="text-error mt-2" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
         </div>
     </div>
-    {% endfor %}
-</div>
-{% else %}
-<p class="welcome-message">Welcome to Post-It! Please log in to view topics or create topics.</p>
-{% endif %}
-</main>
 
-        
-        
+    <!-- Signup Popup -->
+    <div id="signup-popup-content" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Sign Up</h2>
+                <button class="btn btn-secondary" onclick="closePopup('signup-popup-content')">×</button>
+            </div>
+            <form id="signup-form" method="post" action="{{ url_for('signup') }}">
+                <div class="form-group">
+                    <label class="form-label" for="signup-username">Username</label>
+                    <input type="text" id="signup-username" name="username" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="fullname">Full Name</label>
+                    <input type="text" id="fullname" name="fullname" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" id="email" name="email" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="signup-password">Password</label>
+                    <input type="password" id="signup-password" name="password" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password_confirm">Confirm Password</label>
+                    <input type="password" id="password_confirm" name="password_confirm" class="form-input" required>
+                </div>
+                <div id="signup-error-message" class="text-error mt-2" style="display: none;"></div>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
+        </div>
+    </div>
 
-    <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/password.js') }}"></script>
     <script src="{{ url_for('static', filename='js/topic.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-
+    <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
 </body>
 </html>

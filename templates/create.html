@@ -3,81 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create page</title>
-    <link rel="stylesheet" href="static/css/create.css">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <title>Create Topic - Post-It</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body> 
-    
+<body>
     <header>
-        <div class="Post-It">
-        <h1>Post-It</h1>
-    </div>
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-            </ul>
-        </nav>
-
+        <div class="header-content">
+            <a href="{{ url_for('home') }}" class="logo">Post-It</a>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
     </header>
 
-    <main>
-        <div class="line"></div>
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
 
-        <nav class="sidebar-nav">
-            <ul>
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-               
-            </ul>
-        </nav>
-
-        <div class="create-container">
-            <h2>Create Topic</h2>
-            <form action="/create-topic" method="post">
+        <div class="topic-card mt-4">
+            <div class="topic-header">
+                <h2 class="topic-title">Create New Topic</h2>
+            </div>
+            
+            <form id="create-topic-form" action="{{ url_for('create_topic') }}" method="POST" class="mt-4">
                 <div class="form-group">
-                    <label for="topic">Topic:</label>
-                    <input type="text" id="topic" name="topic" required>
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" id="title" name="title" class="form-input" 
+                           placeholder="Give your topic a title" required>
                 </div>
-                <input type="submit" value="Create Topic">
+                <div class="form-group">
+                    <label for="content" class="form-label">Content (optional)</label>
+                    <textarea id="content" name="content" class="form-input" rows="6" 
+                            placeholder="Add some details to your topic..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Topic</button>
             </form>
         </div>
-        
-      
-        
     </main>
-
-    <script>
-     document.addEventListener('DOMContentLoaded', function() {
-    var createTopicForm = document.querySelector('form'); 
-    var errorMessage = document.getElementById('error-message');
-
-    createTopicForm.addEventListener('submit', function(event) {
-        event.preventDefault(); 
-
-        var formData = new FormData(createTopicForm);
-
-        fetch('/create-topic', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Topic created successfully!');
-                
-            } else {
-                errorMessage.textContent = data.message;
-                errorMessage.style.display = 'block';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            errorMessage.textContent = 'An error occurred while creating the topic.';
-            errorMessage.style.display = 'block';
-        });
-    });
-});
-
-    </script>
-
 </body>
 </html>

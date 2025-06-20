@@ -1,24 +1,38 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const loginPopup = document.getElementById('login-popup');
-    const signupPopup = document.getElementById('signup-popup');
-    const loginPopupContent = document.getElementById('login-popup-content');
-    const signupPopupContent = document.getElementById('signup-popup-content');
+document.addEventListener('DOMContentLoaded', function() {
+    // Login popup
+    const loginButton = document.getElementById('login-popup');
+    const loginPopup = document.getElementById('login-popup-content');
 
-    
-    loginPopup.addEventListener('click', function () {
-        if (loginPopupContent.style.display === 'block') {
-            loginPopupContent.style.display = 'none';
-        } else {
-            loginPopupContent.style.display = 'block';
-        }
-    });
+    // Signup popup
+    const signupButton = document.getElementById('signup-popup');
+    const signupPopup = document.getElementById('signup-popup-content');
 
-    
-    signupPopup.addEventListener('click', function () {
-        if (signupPopupContent.style.display === 'block') {
-            signupPopupContent.style.display = 'none';
-        } else {
-            signupPopupContent.style.display = 'block';
+    if (loginButton && loginPopup) {
+        loginButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            loginPopup.style.display = 'flex';
+        });
+    }
+
+    if (signupButton && signupPopup) {
+        signupButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            signupPopup.style.display = 'flex';
+        });
+    }
+
+    // Close popup when clicking outside
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('popup-overlay')) {
+            e.target.style.display = 'none';
         }
     });
 });
+
+// Function to close popup programmatically
+function closePopup(popupId) {
+    const popup = document.getElementById(popupId);
+    if (popup) {
+        popup.style.display = 'none';
+    }
+}

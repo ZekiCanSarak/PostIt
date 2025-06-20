@@ -271,11 +271,11 @@ button:hover {
 
 .welcome-message {
     text-align: center;
-    padding: 20px;
-    margin-top: 150px;
-    margin-left: 150px;
-    font-size: 20px;
-    color: #333;
+    margin: 2rem 0;
+    padding: 2rem;
+    background-color: var(--surface-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
 }
 
 
@@ -319,5 +319,131 @@ button:hover {
 
 .form-display button:hover {
     background-color: #757373;
+}
+
+.topic-card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.topic-card-link:hover .topic-title {
+    color: var(--primary-color);
+}
+
+.topic-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.topic-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.like-button {
+    background: none;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.like-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.like-button .like-icon {
+    font-size: 1.25rem;
+    transition: transform 0.2s ease;
+}
+
+.like-button:hover:not(:disabled) {
+    color: var(--error-color);
+}
+
+.like-button:hover:not(:disabled) .like-icon {
+    transform: scale(1.2);
+}
+
+.like-button.liked {
+    color: var(--error-color);
+}
+
+.like-button.liked .like-icon {
+    animation: like-pop 0.3s ease;
+}
+
+@keyframes like-pop {
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Login/Signup Popup Styles */
+.popup-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup-overlay.active {
+    display: flex;
+}
+
+.popup-content {
+    background-color: var(--surface-color);
+    padding: 2rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.popup-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.popup-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.5rem;
+    transition: var(--transition);
+}
+
+.popup-close:hover {
+    color: var(--text-primary);
 }
 

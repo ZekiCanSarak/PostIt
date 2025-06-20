@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+    <title>{{ topic.title }} - Post-It</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="{{ url_for('home') }}" class="logo">Post-It</a>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    {% if logged_in %}
+                        <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                        <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
+                    {% else %}
+                        <li><a href="#" id="login-popup" class="btn btn-primary">Login</a></li>
+                        <li><a href="#" id="signup-popup" class="btn btn-secondary">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="topic-card mt-4">
+            <div class="topic-header">
+                <h2 class="topic-title">{{ topic.title }}</h2>
+                <div class="topic-meta">
+                    <span>Posted by {{ topic.userName }}</span>
+                    <span>{{ topic.creationTime }}</span>
+                </div>
+            </div>
+            {% if topic.content %}
+                <div class="topic-content mt-2">
+                    {{ topic.content }}
+                </div>
+            {% endif %}
+            <div class="topic-stats mt-2">
+                <div class="topic-stat">
+                    <span>{{ comments|length }} comments</span>
+                </div>
+                <div class="topic-stat">
+                    <button class="like-button {% if topic.userLiked %}liked{% endif %}" 
+                            onclick="toggleLike('topic', {{ topic.topicID }}, this)"
+                            {% if not logged_in %}disabled{% endif %}>
+                        <span class="like-icon">♥</span>
+                        <span class="like-count">{{ topic.likeCount }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {% if logged_in %}
+            <div class="comment-form mt-4">
+                <h3>Add a Comment</h3>
+                <form action="{{ url_for('add_comment') }}" method="POST" class="mt-2">
+                    <input type="hidden" name="topicId" value="{{ topic.topicID }}">
+                    <div class="form-group">
+                        <textarea name="content" class="form-input" rows="3" required 
+                                placeholder="What are your thoughts?"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Comment</button>
+                </form>
+            </div>
+        {% endif %}
+
+        <div class="comments mt-4">
+            {% for comment in comments %}
+                <div class="comment-card">
+                    <div class="comment-content">
+                        {{ comment.content }}
+                    </div>
+                    <div class="comment-meta">
+                        <span>{{ comment.userName }}</span>
+                        <span>{{ comment.creationTime }}</span>
+                        <button class="like-button {% if comment.userLiked %}liked{% endif %}" 
+                                onclick="event.stopPropagation(); toggleLike('comment', {{ comment.commentID }}, this)"
+                                {% if not logged_in %}disabled{% endif %}>
+                            <span class="like-icon">♥</span>
+                            <span class="like-count">{{ comment.likeCount }}</span>
+                        </button>
+                        {% if logged_in %}
+                            <button onclick="showReplyForm({{ comment.commentID }})" class="btn btn-text">Reply</button>
+                        {% endif %}
+                    </div>
+                    
+                    {% if logged_in %}
+                        <div id="reply-form-{{ comment.commentID }}" class="reply-form mt-2" style="display: none;">
+                            <form action="{{ url_for('add_comment') }}" method="POST">
+                                <input type="hidden" name="topicId" value="{{ topic.topicID }}">
+                                <input type="hidden" name="parentId" value="{{ comment.commentID }}">
+                                <div class="form-group">
+                                    <textarea name="content" class="form-input" rows="2" required
+                                            placeholder="Write your reply..."></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary mt-2">Submit Reply</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                    
+                    {% if comment.replies %}
+                        <div class="replies ml-4">
+                            {% for reply in comment.replies %}
+                                <div class="comment-card">
+                                    <div class="comment-content">
+                                        {{ reply.content }}
+                                    </div>
+                                    <div class="comment-meta">
+                                        <span>{{ reply.userName }}</span>
+                                        <span>{{ reply.creationTime }}</span>
+                                        <button class="like-button {% if reply.userLiked %}liked{% endif %}" 
+                                                onclick="event.stopPropagation(); toggleLike('comment', {{ reply.commentID }}, this)"
+                                                {% if not logged_in %}disabled{% endif %}>
+                                            <span class="like-icon">♥</span>
+                                            <span class="like-count">{{ reply.likeCount }}</span>
+                                        </button>
+                                        {% if logged_in %}
+                                            <button onclick="showReplyForm({{ reply.commentID }})" class="btn btn-text">Reply</button>
+                                            <div id="reply-form-{{ reply.commentID }}" class="reply-form mt-2" style="display: none;">
+                                                <form action="{{ url_for('add_comment') }}" method="POST">
+                                                    <input type="hidden" name="topicId" value="{{ topic.topicID }}">
+                                                    <input type="hidden" name="parentId" value="{{ reply.commentID }}">
+                                                    <div class="form-group">
+                                                        <textarea name="content" class="form-input" rows="2" required
+                                                                placeholder="Write your reply..."></textarea>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary mt-2">Submit Reply</button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+
+    <!-- Login/Signup Popups (same as Homepage.html) -->
+    {% if not logged_in %}
+        <!-- Login Popup -->
+        <div id="login-popup-content" class="popup-overlay">
+            <div class="popup-content">
+                <div class="popup-header">
+                    <h2 class="popup-title">Login</h2>
+                    <button class="btn btn-secondary" onclick="closePopup('login-popup-content')">×</button>
+                </div>
+                <form id="login-form" method="post" action="{{ url_for('login') }}">
+                    <div class="form-group">
+                        <label class="form-label" for="username">Username</label>
+                        <input type="text" id="username" name="username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password" id="password" name="password" class="form-input" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Signup Popup -->
+        <div id="signup-popup-content" class="popup-overlay">
+            <div class="popup-content">
+                <div class="popup-header">
+                    <h2 class="popup-title">Sign Up</h2>
+                    <button class="btn btn-secondary" onclick="closePopup('signup-popup-content')">×</button>
+                </div>
+                <form id="signup-form" method="post" action="{{ url_for('signup') }}">
+                    <div class="form-group">
+                        <label class="form-label" for="signup-username">Username</label>
+                        <input type="text" id="signup-username" name="username" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="fullname">Full Name</label>
+                        <input type="text" id="fullname" name="fullname" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="signup-password">Password</label>
+                        <input type="password" id="signup-password" name="password" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="password_confirm">Confirm Password</label>
+                        <input type="password" id="password_confirm" name="password_confirm" class="form-input" required>
+                    </div>
+                    <div id="signup-error-message" class="text-error mt-2" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary">Sign Up</button>
+                </form>
+            </div>
+        </div>
+    {% endif %}
+
+    <script>
+        function showReplyForm(commentId) {
+            const formId = 'reply-form-' + commentId;
+            const form = document.getElementById(formId);
+            if (form) {
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+    </script>
+
+    <script src="{{ url_for('static', filename='js/topic.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
+</body>
+</html> 
