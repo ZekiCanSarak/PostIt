@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import sqlite3
 import datetime
 import os
+import bcrypt
 from functools import wraps
 
 app = Flask(__name__)
@@ -232,8 +233,8 @@ def login():
     ''', (username,))
     user = cursor.fetchone()
     
-    if user and user['passwordHash'] == password:  # In production, use proper password hashing
-        session['username'] = user['userName']  # Use the username from the database
+    if user and bcrypt.checkpw(password.encode('utf-8'), user['passwordHash']):
+        session['username'] = user['userName']
         session['user_id'] = user['userID']
         return redirect(url_for('home'))
     else:
@@ -246,33 +247,45 @@ def login():
 def signup():
     username = request.form['username']
     password = request.form['password']
+    fullname = request.form['fullname']
+    email = request.form['email']
     
-    if not username or not password:
-        flash('Missing required fields', 'error')
+    if not username or not password or not fullname or not email:
+        flash('All fields are required', 'error')
+        return redirect(url_for('home'))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Check if username already exists
+    cursor.execute('SELECT 1 FROM user WHERE userName = ?', (username,))
+    if cursor.fetchone():
+        flash('Username already exists', 'error')
         return redirect(url_for('home'))
     
     try:
-        db = get_db()
-        cursor = db.cursor()
-        now = datetime.datetime.now()
+        # Hash the password
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         
+        # Insert new user
         cursor.execute('''
-            INSERT INTO user (userName, passwordHash, creationTime, lastVisit)
+            INSERT INTO user (userName, passwordHash, fullName, email)
             VALUES (?, ?, ?, ?)
-        ''', (username, password, now, now))  # In production, hash the password
+        ''', (username, hashed_password, fullname, email))
         
-        user_id = cursor.lastrowid
         db.commit()
         
-        # Store the actual username from the form
-        session['username'] = username
-        session['user_id'] = user_id
+        # Log the user in
+        cursor.execute('SELECT userID, userName FROM user WHERE userName = ?', (username,))
+        user = cursor.fetchone()
+        session['username'] = user['userName']
+        session['user_id'] = user['userID']
         
-        return redirect(url_for('home'))
-    except sqlite3.IntegrityError:
-        flash('Username already exists', 'error')
+        flash('Account created successfully!', 'success')
         return redirect(url_for('home'))
     except Exception as e:
+        db.rollback()
         flash('Error creating account: ' + str(e), 'error')
         return redirect(url_for('home'))
 
