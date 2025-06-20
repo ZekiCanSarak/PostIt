@@ -449,3 +449,64 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Event handlers for likes and replies
+function handleLike(type, id, button) {
+    if (!button) return;
+    
+    const formData = new FormData();
+    formData.append('targetType', type);
+    formData.append('targetId', id);
+
+    fetch('/like', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            button.classList.toggle('liked');
+            const countElement = button.querySelector('.like-count');
+            if (countElement) {
+                let count = parseInt(countElement.textContent);
+                countElement.textContent = button.classList.contains('liked') ? count + 1 : count - 1;
+            }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function handleReplyClick(commentId, event) {
+    event.stopPropagation();
+    showReplyForm(commentId);
+}
+
+function showReplyForm(commentId) {
+    const formId = 'reply-form-' + commentId;
+    const form = document.getElementById(formId);
+    if (form) {
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Add event listeners when the document loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers for like buttons
+    document.querySelectorAll('.like-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const type = this.dataset.type;
+            const id = this.dataset.id;
+            handleLike(type, id, this);
+        });
+    });
+
+    // Add click handlers for reply buttons
+    document.querySelectorAll('.reply-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const commentId = this.dataset.commentId;
+            handleReplyClick(commentId, e);
+        });
+    });
+});

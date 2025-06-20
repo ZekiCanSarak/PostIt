@@ -99,6 +99,9 @@ def view_topic(topic_id):
     
     if not topic:
         return 'Topic not found', 404
+
+    # Convert topic row to dictionary
+    topic = dict(topic)
     
     # Get all comments for this topic with like counts
     cursor.execute('''
@@ -115,13 +118,15 @@ def view_topic(topic_id):
         WHERE c.topicID = ? AND c.parentCommentID IS NULL
         ORDER BY c.creationTime DESC
     ''', (session.get('user_id', -1), topic_id))
+    
+    # Convert all comment rows to dictionaries
     comments = [dict(row) for row in cursor.fetchall()]
     
     # Get replies for each comment
     for comment in comments:
         comment['replies'] = get_nested_replies(comment['commentID'])
     
-    return render_template('topic.html', topic=dict(topic), comments=comments, logged_in=logged_in)
+    return render_template('topic.html', topic=topic, comments=comments, logged_in=logged_in)
 
 
 def get_nested_replies(comment_id):
@@ -142,6 +147,8 @@ def get_nested_replies(comment_id):
         WHERE c.parentCommentID = ?
         ORDER BY c.creationTime ASC
     ''', (session.get('user_id', -1), comment_id))
+    
+    # Convert all reply rows to dictionaries
     replies = [dict(row) for row in cursor.fetchall()]
     
     # Recursively get nested replies
@@ -191,6 +198,7 @@ def add_comment():
     content = request.form.get('content')
     topic_id = request.form.get('topicId')
     parent_id = request.form.get('parentId')  # Optional, for replies
+    stance = request.form.get('stance')  # Get the stance from the form
     
     if not content or not topic_id:
         flash('Missing required data', 'error')
@@ -206,9 +214,9 @@ def add_comment():
         user = cursor.fetchone()
         
         cursor.execute('''
-            INSERT INTO comment (content, postingUser, topicID, parentCommentID, creationTime, updateTime)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (content, session['user_id'], topic_id, parent_id, now, now))
+            INSERT INTO comment (content, postingUser, topicID, parentCommentID, stance, creationTime, updateTime)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (content, session['user_id'], topic_id, parent_id, stance, now, now))
         
         db.commit()
         return redirect(url_for('view_topic', topic_id=topic_id))

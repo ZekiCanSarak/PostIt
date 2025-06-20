@@ -423,4 +423,79 @@ textarea.form-input {
         margin: 1rem;
         max-width: calc(100% - 2rem);
     }
+}
+
+/* Stance Buttons and Indicators */
+.stance-buttons {
+    margin-bottom: 1rem;
+}
+
+.stance-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.stance-options {
+    display: flex;
+    gap: 1rem;
+}
+
+.stance-options input[type="radio"] {
+    display: none;
+}
+
+.stance-btn {
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.stance-btn.supporting {
+    color: #2ecc71;
+}
+
+.stance-btn.opposed {
+    color: #e74c3c;
+}
+
+input[type="radio"]:checked + .stance-btn {
+    color: white;
+}
+
+input[type="radio"]:checked + .stance-btn.supporting {
+    background-color: #2ecc71;
+    border-color: #2ecc71;
+}
+
+input[type="radio"]:checked + .stance-btn.opposed {
+    background-color: #e74c3c;
+    border-color: #e74c3c;
+}
+
+.stance-indicator {
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.stance-indicator.supporting {
+    background-color: rgba(46, 204, 113, 0.1);
+    color: #2ecc71;
+}
+
+.stance-indicator.opposed {
+    background-color: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+.comment-card.stance-supporting {
+    border-left: 3px solid #2ecc71;
+}
+
+.comment-card.stance-opposed {
+    border-left: 3px solid #e74c3c;
 } 
