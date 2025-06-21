@@ -46,6 +46,15 @@ def login_required_json(f):
     return decorated_function
 
 
+# Format timestamp to show only hours and minutes
+def format_timestamp(timestamp):
+    if isinstance(timestamp, str):
+        dt = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
+    else:
+        dt = timestamp
+    return dt.strftime('%I:%M %p')  # 12-hour format with AM/PM
+
+
 # Display homepage
 @app.route('/')
 def home():
@@ -55,7 +64,8 @@ def home():
     
     # Get all topics with their metadata and like counts
     cursor.execute('''
-        SELECT t.topicID, t.title, t.content, t.creationTime,
+        SELECT t.topicID, t.title, t.content, 
+               strftime('%I:%M %p', t.creationTime) as creationTime,
                u.userName,
                (SELECT COUNT(*) FROM comment WHERE topicID = t.topicID) as commentCount,
                (SELECT COUNT(*) FROM likes WHERE targetType = 'topic' AND targetID = t.topicID) as likeCount,
@@ -82,7 +92,9 @@ def view_topic(topic_id):
     
     # Get topic details with like count
     cursor.execute('''
-        SELECT t.*, u.userName,
+        SELECT t.topicID, t.title, t.content, 
+               strftime('%I:%M %p', t.creationTime) as creationTime,
+               u.userName,
                (SELECT COUNT(*) FROM likes WHERE targetType = 'topic' AND targetID = t.topicID) as likeCount,
                EXISTS(
                    SELECT 1 FROM likes 
@@ -105,7 +117,9 @@ def view_topic(topic_id):
     
     # Get all comments for this topic with like counts
     cursor.execute('''
-        SELECT c.*, u.userName,
+        SELECT c.commentID, c.content, c.stance, c.parentCommentID,
+               strftime('%I:%M %p', c.creationTime) as creationTime,
+               u.userName,
                (SELECT COUNT(*) FROM likes WHERE targetType = 'comment' AND targetID = c.commentID) as likeCount,
                EXISTS(
                    SELECT 1 FROM likes 
@@ -134,7 +148,9 @@ def get_nested_replies(comment_id):
     cursor = db.cursor()
     
     cursor.execute('''
-        SELECT c.*, u.userName,
+        SELECT c.commentID, c.content, c.stance,
+               strftime('%I:%M %p', c.creationTime) as creationTime,
+               u.userName,
                (SELECT COUNT(*) FROM likes WHERE targetType = 'comment' AND targetID = c.commentID) as likeCount,
                EXISTS(
                    SELECT 1 FROM likes 

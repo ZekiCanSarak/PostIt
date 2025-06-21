@@ -87,225 +87,162 @@ main {
 }
 
 
+/* Create Topic Page Styles */
 .create-container {
-    flex: 1;
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin-left: 250px; 
-    margin-right: 20px;
+    max-width: var(--content-width);
+    margin: 0 auto;
+    padding: var(--spacing-md);
 }
 
-.create-container h2 {
-    margin-bottom: 20px;
+.create-header {
+    margin-bottom: var(--spacing-lg);
+}
+
+.create-title {
+    font-size: var(--font-size-h2);
+    color: var(--text-color);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-sm);
+}
+
+.create-subtitle {
+    color: var(--text-secondary);
+    font-size: var(--font-size-body);
+}
+
+.create-form {
+    background-color: var(--secondary-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-lg);
 }
 
 .form-group {
-    margin-bottom: 20px;
-    margin-right: 10px;
+    margin-bottom: var(--spacing-lg);
 }
 
-.form-group label {
+.form-label {
     display: block;
-    font-weight: bold;
+    color: var(--text-color);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-medium);
+    margin-bottom: var(--spacing-xs);
 }
 
-.form-group input[type="text"],
-.form-group textarea {
+.form-input {
     width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    color: var(--text-color);
+    font-size: var(--font-size-body);
+    font-family: var(--font-family);
+    transition: var(--transition);
 }
 
-.form-group textarea {
-    height: 100px;
+.form-input:focus {
+    border-color: var(--primary-color);
+    outline: none;
 }
 
-.popup-content {
-    display: none;
-    position: absolute;
+textarea.form-input {
+    min-height: 200px;
+    resize: vertical;
+}
+
+.form-help {
+    margin-top: var(--spacing-xs);
+    color: var(--text-secondary);
+    font-size: var(--font-size-small);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.btn-cancel {
     background-color: transparent;
-    border: none;
-    padding: 20px;
-    z-index: 999;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 300px; 
-    justify-content: center;
-}
-
-.click-popup:checked + .popup-content {
-    display: block;
-}
-
-#login-popup-content, #signup-popup-content {
-    width: 350px; 
-    right: 0; 
-}
-
-#login-popup-content {
-    left: auto; 
-    right: 20%;
-    margin-top: 250px;
-    flex-direction: column;
-}
-
-#signup-popup-content {
-    left: auto;
-    right: 0; 
-    margin-top: 250px;
-    flex-direction: column;
-}
-
-.container-box {
-    background-color: #E6E6E6;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 300px;
-    height: auto;
-    margin: 100px auto ;
-}
-
-.form-group {
-    margin-bottom: 15px;
-    padding: 3px;
-}
-
-label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-input[type="text"],
-input[type="password"] {
-    width: 90%;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 3px;   
-}
-
-.submit-div {
-    list-style-type: none;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    justify-items: center;   
-}
-
-#reg-div {
-    transition: 1s ease-in;
-    display:none;
-}
-
-button[type="submit"] {
-    background-color: #7c7c7c;
-    color: #fff;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 3px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-pill);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
-    position: center;
+    transition: var(--transition);
 }
 
-.login li {
-    justify-content: center;
-    text-align: center;
-    margin-top: 10px;
+.btn-cancel:hover {
+    background-color: var(--hover-surface);
+    color: var(--text-color);
 }
 
-.login li a {
-    font-size: small;
-    color: #757373;
-    text-decoration: none;
-    position: sticky;
-}
-
-
-.submit-div li {
-    margin-top: 10px;
-    text-align: center;
-    justify-content: center;
-    align-items: center;
-}
-
-.submit-div li a {
-    color: black;
-    
-}
-
-button:hover {
-    background-color: #6d6c6c;
-}
-
-.container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 30px; 
-}
-
-.login-options {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.login-options button {
-    background-color: #7c7c7c;
-    color: #fff;
+.btn-submit {
+    background-color: var(--primary-color);
+    color: white;
     border: none;
-    padding: 10px 20px;
-    border-radius: 3px;
+    border-radius: var(--radius-pill);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-medium);
     cursor: pointer;
-    position: center;
+    transition: var(--transition);
 }
 
-.login-options button:hover {
-    background-color: #6d6c6c;
+.btn-submit:hover {
+    background-color: var(--hover-accent);
 }
 
-.signup-container {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    width: 300px; 
+.btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.signup-container h2 {
-    margin-top: 0;
+/* Error States */
+.form-input.error {
+    border-color: var(--error-color);
 }
 
-.signup-container form {
-    display: flex;
-    flex-direction: column;
+.error-message {
+    color: var(--error-color);
+    font-size: var(--font-size-small);
+    margin-top: var(--spacing-xs);
 }
 
-.signup-container form input[type="text"],
-.signup-container form input[type="email"],
-.signup-container form input[type="password"] {
-    margin-bottom: 10px;
-    padding: 10px 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 16px;
-    width: 100%; 
+/* Character Counter */
+.char-counter {
+    color: var(--text-secondary);
+    font-size: var(--font-size-small);
+    margin-top: var(--spacing-xs);
+    text-align: right;
 }
 
-.signup-container form input[type="submit"] {
-    background-color: #757373;
-    color: #fff;
-    border: none;
-    padding: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
+.char-counter.limit-near {
+    color: var(--error-color);
 }
 
-.signup-container form input[type="submit"]:hover {
-    background-color: #6d6c6c;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .create-container {
+        padding: var(--spacing-sm);
+    }
+
+    .create-form {
+        padding: var(--spacing-md);
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+        gap: var(--spacing-sm);
+    }
+
+    .btn-cancel,
+    .btn-submit {
+        width: 100%;
+        text-align: center;
+    }
 }
