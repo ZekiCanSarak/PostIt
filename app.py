@@ -542,8 +542,8 @@ def view_profile(username):
     # Get user info with formatted join date
     user_query = """
         SELECT userID, 
-               userName, 
-               strftime('%I:%M %p, %b %d, %Y', creationTime) as joinDate
+               userName,
+               strftime('%Y-%m-%d %H:%M:%S.000', creationTime) as creationTime
         FROM user 
         WHERE userName = ?
     """
@@ -553,8 +553,9 @@ def view_profile(username):
         flash('User not found', 'error')
         return redirect(url_for('home'))
 
-    # Convert user to dictionary
+    # Convert user to dictionary and format join date
     user_dict = dict(user)
+    user_dict['joinDate'] = format_datetime(user_dict['creationTime'])
 
     # Get user's topics with formatted timestamps
     topics_query = """
