@@ -15,6 +15,7 @@
                 <ul>
                     <li><a href="{{ url_for('home') }}">Home</a></li>
                     <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                    <li><a href="{{ url_for('view_profile', username=current_user) }}" class="btn btn-secondary">Profile</a></li>
                     <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
                 </ul>
             </nav>

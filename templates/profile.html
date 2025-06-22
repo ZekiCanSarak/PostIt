@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico', v=2) }}">
+    <title>{{ user.userName }}'s Profile - Post-It</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <a href="{{ url_for('home') }}" class="logo">Post-It</a>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    {% if logged_in %}
+                        <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                        <li><a href="{{ url_for('view_profile', username=current_user) }}" class="btn btn-secondary">Profile</a></li>
+                        <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
+                    {% else %}
+                        <li><a href="#" id="login-popup" class="btn btn-primary">Login</a></li>
+                        <li><a href="#" id="signup-popup" class="btn btn-secondary">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="profile-header">
+            <div class="profile-info">
+                <h1 class="profile-name">{{ user.userName }}</h1>
+                <p class="profile-meta">Member since {{ user.joinDate }}</p>
+            </div>
+        </div>
+
+        <div class="profile-stats mt-4">
+            <div class="stats-card">
+                <h3>Stance Statistics</h3>
+                <div class="stance-stats">
+                    <div class="stance-bar">
+                        {% if stance_stats.supporting_percentage > 0 %}
+                        <div class="stance-bar-supporting" style="width: {{ stance_stats.supporting_percentage }}%">
+                            {{ stance_stats.supporting_percentage }}% Supporting
+                        </div>
+                        {% endif %}
+                        {% if stance_stats.opposed_percentage > 0 %}
+                        <div class="stance-bar-opposed" style="width: {{ stance_stats.opposed_percentage }}%">
+                            {{ stance_stats.opposed_percentage }}% Opposed
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="stance-details mt-2">
+                        <span>Total Comments: {{ stance_stats.total_comments }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-content mt-4">
+            <div class="profile-section">
+                <h2>Topics Started ({{ topics|length }})</h2>
+                <div class="topic-list">
+                    {% for topic in topics %}
+                        <a href="{{ url_for('view_topic', topic_id=topic.topicID) }}" class="topic-card-link">
+                            <div class="topic-card">
+                                <div class="topic-header">
+                                    <h3 class="topic-title">{{ topic.title }}</h3>
+                                    <div class="topic-meta">
+                                        <span class="topic-time">{{ topic.creationTime }}</span>
+                                    </div>
+                                </div>
+                                <div class="topic-stats">
+                                    <span class="comment-count">{{ topic.commentCount }} comments</span>
+                                    <span class="like-count">{{ topic.likeCount }} likes</span>
+                                </div>
+                            </div>
+                        </a>
+                    {% else %}
+                        <p class="empty-state">No topics started yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="profile-section mt-4">
+                <h2>Recent Comments ({{ comments|length }})</h2>
+                <div class="comment-list">
+                    {% for comment in comments %}
+                        <div class="comment-card {% if comment.stance %}stance-{{ comment.stance }}{% endif %}">
+                            <div class="comment-header">
+                                <a href="{{ url_for('view_topic', topic_id=comment.topicID) }}" class="comment-topic">
+                                    Re: {{ comment.topicTitle }}
+                                </a>
+                                <span class="comment-date">{{ comment.creationTime }}</span>
+                            </div>
+                            <div class="comment-content">
+                                {{ comment.content }}
+                            </div>
+                            <div class="comment-meta">
+                                {% if comment.stance %}
+                                    <span class="stance-indicator {{ comment.stance }}">{{ comment.stance|title }}</span>
+                                {% endif %}
+                                <span class="like-count">{{ comment.likeCount }} likes</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="empty-state">No comments made yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
+</body>
+</html> 

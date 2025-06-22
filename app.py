@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g, flash, send_from_directory
 import sqlite3
-import datetime
+from datetime import datetime
 import os
 import bcrypt
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['DATABASE'] = 'debate.sqlite'
@@ -17,6 +18,14 @@ def get_db():
     return g.db
 
 
+def query_db(query, args=(), one=False):
+    cur = get_db().execute(query, args)
+    rv = cur.fetchall()
+    cur.close()
+    get_db().commit()
+    return (rv[0] if rv else None) if one else rv
+
+
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
@@ -25,7 +34,20 @@ def close_connection(exception):
 
 
 def is_logged_in():
-    return 'username' in session
+    return 'user_id' in session
+
+
+def get_current_user():
+    if 'user_id' in session:
+        user_query = "SELECT userName FROM user WHERE userID = ?"
+        user = query_db(user_query, [session['user_id']], one=True)
+        return user['userName'] if user else None
+    return None
+
+
+@app.context_processor
+def inject_user():
+    return dict(current_user=get_current_user())
 
 
 def login_required(f):
@@ -49,129 +71,161 @@ def login_required_json(f):
 # Format timestamp to show only hours and minutes
 def format_timestamp(timestamp):
     if isinstance(timestamp, str):
-        dt = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
+        dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
     else:
         dt = timestamp
     return dt.strftime('%I:%M %p')  # 12-hour format with AM/PM
 
 
+def format_datetime(timestamp):
+    """Helper function to format datetime consistently"""
+    if isinstance(timestamp, str):
+        # If timestamp is already a string, parse it first
+        try:
+            dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')
+        except ValueError:
+            try:
+                dt = datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                return timestamp  # Return as is if parsing fails
+    else:
+        dt = timestamp
+    return dt.strftime('%I:%M %p, %b %d, %Y')
+
+
 # Display homepage
 @app.route('/')
 def home():
-    logged_in = is_logged_in()
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Get all topics with their metadata and like counts
-    cursor.execute('''
-        SELECT t.topicID, t.title, t.content, 
-               strftime('%I:%M %p', t.creationTime) as creationTime,
-               u.userName,
-               (SELECT COUNT(*) FROM comment WHERE topicID = t.topicID) as commentCount,
-               (SELECT COUNT(*) FROM likes WHERE targetType = 'topic' AND targetID = t.topicID) as likeCount,
-               EXISTS(
-                   SELECT 1 FROM likes 
-                   WHERE targetType = 'topic' 
-                   AND targetID = t.topicID 
-                   AND userID = ?
-               ) as userLiked
-        FROM topic t
-        JOIN user u ON t.postingUser = u.userID
-        ORDER BY t.creationTime DESC
-    ''', (session.get('user_id', -1),))
-    topics = [dict(row) for row in cursor.fetchall()]
-    
-    return render_template('Homepage.html', topics=topics, logged_in=logged_in)
+    if is_logged_in():
+        query = """
+            SELECT t.*,
+                   u.userName,
+                   strftime('%Y-%m-%d %H:%M:%S.000', t.creationTime) as creationTime,
+                   COUNT(DISTINCT c.commentID) as commentCount,
+                   COUNT(DISTINCT l.likeID) as likeCount,
+                   EXISTS(
+                       SELECT 1 FROM likes 
+                       WHERE targetID = t.topicID 
+                       AND targetType = 'topic' 
+                       AND userID = ?
+                   ) as userLiked
+            FROM topic t
+            JOIN user u ON t.postingUser = u.userID
+            LEFT JOIN comment c ON t.topicID = c.topicID
+            LEFT JOIN likes l ON t.topicID = l.targetID AND l.targetType = 'topic'
+            GROUP BY t.topicID
+            ORDER BY t.creationTime DESC
+        """
+        topics = query_db(query, [session.get('user_id')])
+    else:
+        query = """
+            SELECT t.*,
+                   u.userName,
+                   strftime('%Y-%m-%d %H:%M:%S.000', t.creationTime) as creationTime,
+                   COUNT(DISTINCT c.commentID) as commentCount,
+                   COUNT(DISTINCT l.likeID) as likeCount
+            FROM topic t
+            JOIN user u ON t.postingUser = u.userID
+            LEFT JOIN comment c ON t.topicID = c.topicID
+            LEFT JOIN likes l ON t.topicID = l.targetID AND l.targetType = 'topic'
+            GROUP BY t.topicID
+            ORDER BY t.creationTime DESC
+        """
+        topics = query_db(query)
+
+    # Convert rows to dictionaries and format timestamps
+    formatted_topics = []
+    for topic in topics:
+        topic_dict = dict(topic)
+        topic_dict['creationTime'] = format_datetime(topic_dict['creationTime'])
+        formatted_topics.append(topic_dict)
+
+    return render_template('Homepage.html', topics=formatted_topics, logged_in=is_logged_in())
 
 
 @app.route('/topic/<int:topic_id>')
 def view_topic(topic_id):
-    logged_in = is_logged_in()
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Get topic details with like count
-    cursor.execute('''
-        SELECT t.topicID, t.title, t.content, 
-               strftime('%I:%M %p', t.creationTime) as creationTime,
+    # Get topic details with formatted timestamp
+    topic_query = """
+        SELECT t.*,
                u.userName,
-               (SELECT COUNT(*) FROM likes WHERE targetType = 'topic' AND targetID = t.topicID) as likeCount,
+               strftime('%Y-%m-%d %H:%M:%S.000', t.creationTime) as creationTime,
                EXISTS(
                    SELECT 1 FROM likes 
-                   WHERE targetType = 'topic' 
-                   AND targetID = t.topicID 
+                   WHERE targetID = t.topicID 
+                   AND targetType = 'topic' 
                    AND userID = ?
-               ) as userLiked
+               ) as userLiked,
+               (SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic') as likeCount
         FROM topic t
         JOIN user u ON t.postingUser = u.userID
         WHERE t.topicID = ?
-        GROUP BY t.topicID
-    ''', (session.get('user_id', -1), topic_id))
-    topic = cursor.fetchone()
+    """
+    topic = query_db(topic_query, [session.get('user_id', -1), topic_id], one=True)
     
     if not topic:
-        return 'Topic not found', 404
+        flash('Topic not found', 'error')
+        return redirect(url_for('home'))
 
-    # Convert topic row to dictionary
-    topic = dict(topic)
-    
-    # Get all comments for this topic with like counts
-    cursor.execute('''
-        SELECT c.commentID, c.content, c.stance, c.parentCommentID,
-               strftime('%I:%M %p', c.creationTime) as creationTime,
+    # Convert topic to dictionary and format timestamp
+    topic_dict = dict(topic)
+    topic_dict['creationTime'] = format_datetime(topic_dict['creationTime'])
+
+    # Get comments with formatted timestamps
+    comments_query = """
+        SELECT c.*,
                u.userName,
-               (SELECT COUNT(*) FROM likes WHERE targetType = 'comment' AND targetID = c.commentID) as likeCount,
+               strftime('%Y-%m-%d %H:%M:%S.000', c.creationTime) as creationTime,
                EXISTS(
                    SELECT 1 FROM likes 
-                   WHERE targetType = 'comment' 
-                   AND targetID = c.commentID 
+                   WHERE targetID = c.commentID 
+                   AND targetType = 'comment' 
                    AND userID = ?
-               ) as userLiked
+               ) as userLiked,
+               (SELECT COUNT(*) FROM likes WHERE targetID = c.commentID AND targetType = 'comment') as likeCount
         FROM comment c
         JOIN user u ON c.postingUser = u.userID
         WHERE c.topicID = ? AND c.parentCommentID IS NULL
         ORDER BY c.creationTime DESC
-    ''', (session.get('user_id', -1), topic_id))
-    
-    # Convert all comment rows to dictionaries
-    comments = [dict(row) for row in cursor.fetchall()]
-    
-    # Get replies for each comment
+    """
+    comments = query_db(comments_query, [session.get('user_id', -1), topic_id])
+
+    # Convert comments to dictionaries and format timestamps
+    formatted_comments = []
     for comment in comments:
-        comment['replies'] = get_nested_replies(comment['commentID'])
-    
-    return render_template('topic.html', topic=topic, comments=comments, logged_in=logged_in)
+        comment_dict = dict(comment)
+        comment_dict['creationTime'] = format_datetime(comment_dict['creationTime'])
+        
+        # Get replies with formatted timestamps
+        replies_query = """
+            SELECT c.*,
+                   u.userName,
+                   strftime('%Y-%m-%d %H:%M:%S.000', c.creationTime) as creationTime,
+                   EXISTS(
+                       SELECT 1 FROM likes 
+                       WHERE targetID = c.commentID 
+                       AND targetType = 'comment' 
+                       AND userID = ?
+                   ) as userLiked,
+                   (SELECT COUNT(*) FROM likes WHERE targetID = c.commentID AND targetType = 'comment') as likeCount
+            FROM comment c
+            JOIN user u ON c.postingUser = u.userID
+            WHERE c.parentCommentID = ?
+            ORDER BY c.creationTime ASC
+        """
+        replies = query_db(replies_query, [session.get('user_id', -1), comment_dict['commentID']])
+        
+        # Convert replies to dictionaries and format timestamps
+        formatted_replies = []
+        for reply in replies:
+            reply_dict = dict(reply)
+            reply_dict['creationTime'] = format_datetime(reply_dict['creationTime'])
+            formatted_replies.append(reply_dict)
+        
+        comment_dict['replies'] = formatted_replies
+        formatted_comments.append(comment_dict)
 
-
-def get_nested_replies(comment_id):
-    db = get_db()
-    cursor = db.cursor()
-    
-    cursor.execute('''
-        SELECT c.commentID, c.content, c.stance,
-               strftime('%I:%M %p', c.creationTime) as creationTime,
-               u.userName,
-               (SELECT COUNT(*) FROM likes WHERE targetType = 'comment' AND targetID = c.commentID) as likeCount,
-               EXISTS(
-                   SELECT 1 FROM likes 
-                   WHERE targetType = 'comment' 
-                   AND targetID = c.commentID 
-                   AND userID = ?
-               ) as userLiked
-        FROM comment c
-        JOIN user u ON c.postingUser = u.userID
-        WHERE c.parentCommentID = ?
-        ORDER BY c.creationTime ASC
-    ''', (session.get('user_id', -1), comment_id))
-    
-    # Convert all reply rows to dictionaries
-    replies = [dict(row) for row in cursor.fetchall()]
-    
-    # Recursively get nested replies
-    for reply in replies:
-        reply['replies'] = get_nested_replies(reply['commentID'])
-    
-    return replies
+    return render_template('topic.html', topic=topic_dict, comments=formatted_comments, logged_in=is_logged_in())
 
 
 @app.route('/create-topic', methods=['POST'])
@@ -376,6 +430,300 @@ def toggle_like():
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static', 'img'),
                              'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
+@app.route('/api/filter-topics')
+def filter_topics():
+    # Get filter parameters
+    sort_by = request.args.get('sortBy', 'newest')
+    stance = request.args.get('stance', 'all')
+    user = request.args.get('user', '')
+    date_from = request.args.get('dateFrom', '')
+    date_to = request.args.get('dateTo', '')
+    popularity = request.args.get('popularity', 'all')
+    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Base query with proper column selection
+        query = """
+            SELECT 
+                t.topicID,
+                t.title,
+                t.content,
+                strftime('%I:%M %p', t.creationTime) as creationTime,
+                u.userName,
+                (SELECT COUNT(*) FROM comment WHERE topicID = t.topicID) as commentCount,
+                (SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic') as likeCount,
+                EXISTS(
+                    SELECT 1 FROM likes 
+                    WHERE targetID = t.topicID 
+                    AND targetType = 'topic' 
+                    AND userID = ?
+                ) as userLiked
+            FROM topic t
+            LEFT JOIN user u ON t.postingUser = u.userID
+            WHERE 1=1
+        """
+        params = [session.get('user_id', -1)]
+        
+        # Add filters
+        if stance != 'all':
+            query += " AND t.stance = ?"
+            params.append(stance)
+        
+        if user:
+            query += " AND u.userName LIKE ?"
+            params.append(f"%{user}%")
+        
+        if date_from:
+            query += " AND DATE(t.creationTime) >= DATE(?)"
+            params.append(date_from)
+        
+        if date_to:
+            query += " AND DATE(t.creationTime) <= DATE(?)"
+            params.append(date_to)
+        
+        # Add popularity filter using subquery
+        if popularity != 'all':
+            like_count_query = "(SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic')"
+            if popularity == 'high':
+                query += f" AND {like_count_query} > 10"
+            elif popularity == 'medium':
+                query += f" AND {like_count_query} BETWEEN 5 AND 10"
+            else:  # low
+                query += f" AND {like_count_query} < 5"
+        
+        # Add sorting
+        if sort_by == 'newest':
+            query += " ORDER BY t.creationTime DESC"
+        elif sort_by == 'oldest':
+            query += " ORDER BY t.creationTime ASC"
+        elif sort_by == 'most_liked':
+            query += " ORDER BY likeCount DESC"
+        elif sort_by == 'most_replied':
+            query += " ORDER BY commentCount DESC"
+        
+        # Execute query
+        cursor.execute(query, params)
+        topics = cursor.fetchall()
+        
+        # Convert to list of dicts with proper column mapping
+        topics_list = []
+        for topic in topics:
+            topics_list.append({
+                'topicID': topic[0],
+                'title': topic[1],
+                'content': topic[2],
+                'creationTime': topic[3],
+                'userName': topic[4],
+                'commentCount': topic[5],
+                'likeCount': topic[6],
+                'userLiked': bool(topic[7]),
+                'isLoggedIn': 'user_id' in session
+            })
+        
+        return jsonify({'success': True, 'topics': topics_list})
+        
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/profile/<username>')
+def view_profile(username):
+    if not username:
+        return redirect(url_for('home'))
+
+    # Get user info with formatted join date
+    user_query = """
+        SELECT userID, 
+               userName, 
+               strftime('%I:%M %p, %b %d, %Y', creationTime) as joinDate
+        FROM user 
+        WHERE userName = ?
+    """
+    user = query_db(user_query, [username], one=True)
+    
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('home'))
+
+    # Convert user to dictionary
+    user_dict = dict(user)
+
+    # Get user's topics with formatted timestamps
+    topics_query = """
+        SELECT t.*, 
+               strftime('%Y-%m-%d %H:%M:%S.000', t.creationTime) as creationTime,
+               COUNT(DISTINCT c.commentID) as commentCount,
+               COUNT(DISTINCT l.likeID) as likeCount
+        FROM topic t
+        LEFT JOIN comment c ON t.topicID = c.topicID
+        LEFT JOIN likes l ON t.topicID = l.targetID AND l.targetType = 'topic'
+        WHERE t.postingUser = ?
+        GROUP BY t.topicID
+        ORDER BY t.creationTime DESC
+    """
+    topics = query_db(topics_query, [user_dict['userID']])
+
+    # Convert topics to dictionaries and format timestamps
+    formatted_topics = []
+    for topic in topics:
+        topic_dict = dict(topic)
+        topic_dict['creationTime'] = format_datetime(topic_dict['creationTime'])
+        formatted_topics.append(topic_dict)
+
+    # Get user's comments with formatted timestamps
+    comments_query = """
+        SELECT c.*,
+               t.title as topicTitle,
+               strftime('%Y-%m-%d %H:%M:%S.000', c.creationTime) as creationTime,
+               COUNT(l.likeID) as likeCount
+        FROM comment c
+        JOIN topic t ON c.topicID = t.topicID
+        LEFT JOIN likes l ON c.commentID = l.targetID AND l.targetType = 'comment'
+        WHERE c.postingUser = ?
+        GROUP BY c.commentID
+        ORDER BY c.creationTime DESC
+    """
+    comments = query_db(comments_query, [user_dict['userID']])
+
+    # Convert comments to dictionaries and format timestamps
+    formatted_comments = []
+    for comment in comments:
+        comment_dict = dict(comment)
+        comment_dict['creationTime'] = format_datetime(comment_dict['creationTime'])
+        formatted_comments.append(comment_dict)
+
+    # Calculate stance statistics
+    stance_query = """
+        SELECT stance, COUNT(*) as count
+        FROM comment
+        WHERE postingUser = ? AND stance IS NOT NULL
+        GROUP BY stance
+    """
+    stance_counts = query_db(stance_query, [user_dict['userID']])
+    
+    total_comments = sum(count['count'] for count in stance_counts)
+    supporting_count = next((item['count'] for item in stance_counts if item['stance'] == 'supporting'), 0)
+    opposed_count = next((item['count'] for item in stance_counts if item['stance'] == 'opposed'), 0)
+    
+    stance_stats = {
+        'total_comments': total_comments,
+        'supporting_percentage': round((supporting_count / total_comments * 100) if total_comments > 0 else 0),
+        'opposed_percentage': round((opposed_count / total_comments * 100) if total_comments > 0 else 0)
+    }
+
+    return render_template('profile.html',
+                         user=user_dict,
+                         topics=formatted_topics,
+                         comments=formatted_comments,
+                         stance_stats=stance_stats,
+                         logged_in=is_logged_in())
+
+
+@app.route('/apply_filters', methods=['POST'])
+def apply_filters():
+    if not is_logged_in():
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+    # Get filter parameters
+    sort_by = request.form.get('sortBy', 'newest')
+    stance = request.form.get('stance', 'all')
+    user_filter = request.form.get('user', '')
+    date_from = request.form.get('dateFrom', '')
+    date_to = request.form.get('dateTo', '')
+    popularity = request.form.get('popularity', 'all')
+
+    # Build the base query with formatted timestamp
+    query = """
+        SELECT t.*, 
+               u.userName,
+               strftime('%Y-%m-%d %H:%M:%S.000', t.creationTime) as creationTime,
+               COUNT(DISTINCT c.commentID) as commentCount,
+               COUNT(DISTINCT l.likeID) as likeCount,
+               EXISTS(
+                   SELECT 1 FROM likes 
+                   WHERE targetID = t.topicID 
+                   AND targetType = 'topic' 
+                   AND userID = ?
+               ) as userLiked
+        FROM topic t
+        JOIN user u ON t.postingUser = u.userID
+        LEFT JOIN comment c ON t.topicID = c.topicID
+        LEFT JOIN likes l ON t.topicID = l.targetID AND l.targetType = 'topic'
+    """
+
+    params = [session.get('user_id')]
+    where_clauses = []
+
+    # Add stance filter
+    if stance != 'all':
+        where_clauses.append("EXISTS (SELECT 1 FROM comment WHERE topicID = t.topicID AND stance = ?)")
+        params.append(stance)
+
+    # Add user filter
+    if user_filter:
+        where_clauses.append("u.userName LIKE ?")
+        params.append(f"%{user_filter}%")
+
+    # Add date range filter
+    if date_from:
+        where_clauses.append("DATE(t.creationTime) >= DATE(?)")
+        params.append(date_from)
+    if date_to:
+        where_clauses.append("DATE(t.creationTime) <= DATE(?)")
+        params.append(date_to)
+
+    # Add popularity filter
+    if popularity != 'all':
+        if popularity == 'high':
+            where_clauses.append("(SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic') > 10")
+        elif popularity == 'medium':
+            where_clauses.append("(SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic') BETWEEN 5 AND 10")
+        elif popularity == 'low':
+            where_clauses.append("(SELECT COUNT(*) FROM likes WHERE targetID = t.topicID AND targetType = 'topic') < 5")
+
+    # Add WHERE clause if there are any conditions
+    if where_clauses:
+        query += " WHERE " + " AND ".join(where_clauses)
+
+    # Add GROUP BY
+    query += " GROUP BY t.topicID"
+
+    # Add ORDER BY based on sort_by parameter
+    if sort_by == 'newest':
+        query += " ORDER BY t.creationTime DESC"
+    elif sort_by == 'oldest':
+        query += " ORDER BY t.creationTime ASC"
+    elif sort_by == 'most_liked':
+        query += " ORDER BY likeCount DESC, t.creationTime DESC"
+    elif sort_by == 'most_replied':
+        query += " ORDER BY commentCount DESC, t.creationTime DESC"
+
+    try:
+        # Execute query and get results
+        topics = query_db(query, params)
+        
+        # Format timestamps
+        formatted_topics = []
+        for topic in topics:
+            formatted_topic = dict(topic)
+            formatted_topic['creationTime'] = format_datetime(topic['creationTime'])
+            formatted_topics.append(formatted_topic)
+
+        return jsonify({
+            'success': True,
+            'topics': formatted_topics
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':

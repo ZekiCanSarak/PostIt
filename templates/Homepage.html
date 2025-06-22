@@ -16,6 +16,7 @@
                     <li><a href="{{ url_for('home') }}">Home</a></li>
                     {% if logged_in %}
                         <li><a href="{{ url_for('create_page') }}" class="btn btn-primary">Create Topic</a></li>
+                        <li><a href="{{ url_for('view_profile', username=current_user) }}" class="btn btn-secondary">Profile</a></li>
                         <li><a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></li>
                     {% else %}
                         <li><a href="#" id="login-popup" class="btn btn-primary">Login</a></li>
@@ -44,17 +45,75 @@
                     <p class="topic-content mt-2">Please log in to create topics, comment, or like posts.</p>
                 </div>
             </div>
+        {% else %}
+            <div class="filters-header">
+                <button id="toggle-filters" class="btn btn-secondary">
+                    Filters
+                </button>
+            </div>
+            
+            <div class="filter-controls mt-4" style="display: none;">
+                <div class="filter-section">
+                    <div class="filter-group">
+                        <label for="sort-by">Sort by:</label>
+                        <select id="sort-by" class="form-input">
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                            <option value="most_liked">Most Liked</option>
+                            <option value="most_replied">Most Replied</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="stance-filter">Filter by Stance:</label>
+                        <select id="stance-filter" class="form-input">
+                            <option value="all">All Stances</option>
+                            <option value="supporting">Supporting</option>
+                            <option value="opposed">Opposed</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="user-filter">Filter by User:</label>
+                        <input type="text" id="user-filter" class="form-input" placeholder="Enter username">
+                    </div>
+                </div>
+
+                <div class="filter-section mt-2">
+                    <div class="filter-group">
+                        <label>Date Range:</label>
+                        <div class="date-inputs">
+                            <input type="date" id="date-from" class="form-input">
+                            <span class="date-separator">to</span>
+                            <input type="date" id="date-to" class="form-input">
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="popularity-filter">Popularity:</label>
+                        <select id="popularity-filter" class="form-input">
+                            <option value="all">All</option>
+                            <option value="high">High (>10 likes)</option>
+                            <option value="medium">Medium (5-10 likes)</option>
+                            <option value="low">Low (<5 likes)</option>
+                        </select>
+                    </div>
+
+                    <button id="apply-filters" class="btn btn-primary">Apply Filters</button>
+                    <button id="reset-filters" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
         {% endif %}
-        
+
         <div class="topic-list mt-4">
             {% for topic in topics %}
                 <a href="{{ url_for('view_topic', topic_id=topic.topicID) }}" class="topic-card-link">
                     <div class="topic-card">
                         <div class="topic-header">
                             <h2 class="topic-title">{{ topic.title }}</h2>
-                            <div class="topic-meta">
-                                <span>Posted by {{ topic.userName }}</span>
-                                <span>{{ topic.creationTime }}</span>
+                            <div class="topic-info">
+                                <span class="topic-author">Posted by {{ topic.userName }}</span>
+                                <span class="topic-time">{{ topic.creationTime }}</span>
                             </div>
                         </div>
                         {% if topic.content %}
@@ -140,5 +199,6 @@
 
     <script src="{{ url_for('static', filename='js/topic.js') }}"></script>
     <script src="{{ url_for('static', filename='js/popup.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/filters.js') }}"></script>
 </body>
 </html>
